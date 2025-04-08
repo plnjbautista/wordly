@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worldly Words</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 2rem;
+            background-color: #f8f9fa;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .welcome-container {
+            text-align: center;
+            max-width: 600px;
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin: 0 auto;
+        }
+        .game-container {
+            display: flex;
+            max-width: 90vw;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+        }
+        .game-content {
+            flex: 1;
+            padding-right: 1rem;
+        }
+        .history-container {
+            width: 30%;
+            min-width: 250px;
+            padding-left: 1.5rem;
+            border-left: 1px solid #dee2e6;
+        }
+        .letter-display {
+            font-size: 6rem;
+            font-weight: bold;
+            color: #007bff;
+            text-align: center;
+            margin: 1.5rem 0;
+            text-transform: uppercase;
+        }
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+        }
+        .country-input {
+            margin-bottom: 1.5rem;
+        }
+        .message-area {
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .success-message {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .info-message {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        .hidden {
+            display: none;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 2.5rem;
+            height: 2.5rem;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .welcome-title {
+            font-size: 3rem;
+            color: #007bff;
+            margin-bottom: 1.5rem;
+        }
+        .welcome-text {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .game-container {
+                flex-direction: column;
+                padding: 1rem;
+            }
+            .history-container {
+                width: 100%;
+                min-width: unset;
+                margin-top: 1.5rem;
+                padding-left: 0;
+                padding-top: 1.5rem;
+                border-left: none;
+                border-top: 1px solid #dee2e6;
+            }
+            .game-content {
+                padding-right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Welcome Screen -->
+        <div id="welcome-screen" class="welcome-container">
+            <h1 class="welcome-title">Welcome to Worldly Words!</h1>
+            <p class="welcome-text">Test your geography knowledge by naming countries starting with given letters. Challenge yourself and learn about the world!</p>
+            <button id="welcome-start-btn" class="btn btn-primary btn-lg">Start a Game</button>
+        </div>
+        
+        <!-- Game Screen (Initially Hidden) -->
+        <div id="game-container" class="game-container hidden">
+            <div class="game-content">
+                <h1 class="text-center mb-4">Worldly Words</h1>
+                <div class="letter-display" id="current-letter">A</div>
+                
+                <div id="message-area" class="message-area info-message">
+                    Game start! Name a country that starts with the letter above.
+                </div>
+                
+                <div class="country-input input-group mb-3">
+                    <input type="text" id="country-input" class="form-control" placeholder="Enter a country...">
+                    <button id="submit-btn" class="btn btn-primary">Submit</button>
+                </div>
+                
+                <div id="loader" class="loader hidden"></div>
+                
+                <button id="new-game-btn" class="btn btn-outline-primary w-100">New Game</button>
+            </div>
+            
+            <div class="history-container">
+                <h4 class="mb-3">Game History:</h4>
+                <div class="history-list">
+                    <ul id="history" class="list-group">
+                        <!-- Game history will be displayed here -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const welcomeScreen = document.getElementById('welcome-screen');
+            const gameContainer = document.getElementById('game-container');
+            const welcomeStartBtn = document.getElementById('welcome-start-btn');
+            const newGameBtn = document.getElementById('new-game-btn');
+            const currentLetter = document.getElementById('current-letter');
+            const countryInput = document.getElementById('country-input');
+            const submitBtn = document.getElementById('submit-btn');
+            const historyList = document.getElementById('history');
+            const messageArea = document.getElementById('message-area');
+            const loader = document.getElementById('loader');
+            
+            // Game state
+            let gameActive = false;
+            
+            // Event listeners
+            welcomeStartBtn.addEventListener('click', function() {
+                welcomeScreen.classList.add('hidden');
+                gameContainer.classList.remove('hidden');
+                startGame();
+            });
+            
+            newGameBtn.addEventListener('click', startGame);
+            submitBtn.addEventListener('click', submitCountry);
+            countryInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    submitCountry();
+                }
+            });
+            
+            // Functions
+            function startGame() {
+                showLoader();
+                
+                fetch('/api/start_game', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        gameActive = true;
+                        currentLetter.textContent = data.letter;
+                        
+                        // Clear history and input
+                        historyList.innerHTML = '';
+                        countryInput.value = '';
+                        
+                        // Show message
+                        showMessage('Game start! Name a country that starts with the letter above.', 'info');
+                    } else {
+                        showMessage('Failed to start game: ' + data.message, 'error');
+                    }
+                    hideLoader();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('Error starting game. Please try again.', 'error');
+                    hideLoader();
+                });
+            }
+            
+            function submitCountry() {
+                const country = countryInput.value.trim();
+                
+                if (!country) {
+                    showMessage('Please enter a country name', 'error');
+                    return;
+                }
+                
+                showLoader();
+                
+                fetch('/api/submit_country', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ country: country })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Add player's guess to history
+                    addToHistory(country, 'You');
+                    
+                    // Clear input
+                    countryInput.value = '';
+                    
+                    if (data.status === 'success') {
+                        // Add computer's response to history
+                        addToHistory(data.computer_choice, 'Worldly');
+                        showMessage(data.message, 'success');
+                    } else if (data.status === 'game_over') {
+                        gameActive = false;
+                        showMessage(data.message, 'error');
+                    } else {
+                        showMessage(data.message, 'info');
+                    }
+                    hideLoader();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('Error submitting country. Please try again.', 'error');
+                    hideLoader();
+                });
+            }
+            
+            function addToHistory(country, player) {
+                const listItem = document.createElement('li');
+                listItem.className = 'list-group-item';
+                listItem.innerHTML = `<strong>${player}:</strong> ${country}`;
+                historyList.prepend(listItem);
+            }
+            
+            function showMessage(message, type) {
+                messageArea.textContent = message;
+                messageArea.className = 'message-area';
+                
+                switch(type) {
+                    case 'success':
+                        messageArea.classList.add('success-message');
+                        break;
+                    case 'error':
+                        messageArea.classList.add('error-message');
+                        break;
+                    default:
+                        messageArea.classList.add('info-message');
+                }
+            }
+            
+            function showLoader() {
+                loader.classList.remove('hidden');
+                submitBtn.disabled = true;
+            }
+            
+            function hideLoader() {
+                loader.classList.add('hidden');
+                submitBtn.disabled = false;
+                countryInput.focus();
+            }
+        });
+    </script>
+</body>
+</html>
